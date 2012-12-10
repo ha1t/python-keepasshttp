@@ -14,7 +14,7 @@ class KeepassCrypt:
     self.aes = AES.new(key, AES.MODE_CBC, iv)
 
   def addPadding(self, word):
-    block_size = 8
+    block_size = 16
 
     if (block_size > len(word)):
       fill_len = block_size - len(word)
@@ -44,15 +44,16 @@ class KeepassCrypt:
     decrypted_word = self.aes.decrypt(word)
     return self.stripPadding(decrypted_word)
 
-keyfile = json.loads(open('keyfile.txt').read())
-key = keyfile['Key']
+#keyfile = json.loads(open('keyfile.txt').read())
+#key = keyfile['Key']
+key = "pda4F1JirKVVVmvQZgNJro8r+LkGQ0MDoogu8BjoSfM="
 key = base64.b64decode(key);
 
 iv = 'jJqvS66N93xq6AHV9O45Jw=='
 iv = base64.b64decode(iv)
 kpc = KeepassCrypt(key, iv)
 
-#word = 'http://mixi.jp'
+# 'http://mixi.jp'
 raw_word = 'n+4SXVjeuoBBmsADfqwbOg=='
 print raw_word
 word = base64.b64decode(raw_word)
@@ -62,9 +63,6 @@ print word
 
 word = kpc.encrypt("http://mixi.jp")
 word = base64.b64encode(word)
-print word
-
-word = kpc.decrypt(word)
 print word
 
 sys.exit()

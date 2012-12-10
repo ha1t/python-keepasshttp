@@ -15,25 +15,11 @@ class KeepassCrypt:
 
   def addPadding(self, word):
     block_size = 16
-
-    if (block_size > len(word)):
-      fill_len = block_size - len(word)
-    elif (len(word) % block_size == 0):
-      fill_len = 0
-    else:
-      fill_len = block_size - (len(word) % block_size)
-
-    pad_char = chr(fill_len)
-
-    return word + pad_char * fill_len
+    padding_number = block_size - (len(word) % block_size)
+    return word + chr(padding_number) * padding_number
 
   def stripPadding(self, word):
-    pad_char = ord(word[-1:])
-
-    if (pad_char > len(word)):
-      return word
-
-    return word.rstrip(chr(pad_char))
+    return word[:-ord(word[-1])]
 
   def encrypt(self, word):
     word = self.addPadding(word)

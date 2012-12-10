@@ -45,10 +45,10 @@ print raw_word
 word = base64.b64decode(raw_word)
 
 word = kpc.decrypt(word)
-print word
+print word # 'http://mixi.jp'
 
-word = kpc.encrypt("http://mixi.jp")
+word = kpc.encrypt(word)
 word = base64.b64encode(word)
-print word
+print word # 'ZI56MHFtNDzOD3I+j5losg==' になってしまう。なぜだ！
 
 sys.exit()

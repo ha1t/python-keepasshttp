@@ -28,8 +28,7 @@ class KeepassCrypt:
 
     def encrypt(self, word):
         word = self.addPadding(word)
-        encrypted_word = self.aes.encrypt(word)
-        return encrypted_word
+        return self.aes.encrypt(word)
 
     def decrypt(self, word):
         decrypted_word = self.aes.decrypt(word)

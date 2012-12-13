@@ -50,5 +50,3 @@ print word # 'http://mixi.jp'
 word = kpc.encrypt(word)
 word = base64.b64encode(word)
 print word # 'ZI56MHFtNDzOD3I+j5losg==' になってしまう。なぜだ！
-
-sys.exit()

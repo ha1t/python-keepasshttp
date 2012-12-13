@@ -11,7 +11,12 @@ from Crypto.Cipher import AES
 class KeepassCrypt:
 
     def __init__(self, key, iv):
-        self.aes = AES.new(key, AES.MODE_CBC, iv)
+        self.key = key
+        self.iv = iv
+    
+    @property
+    def aes(self):
+        return AES.new(self.key, AES.MODE_CBC, self.iv)
 
     def addPadding(self, word):
         block_size = 16

@@ -8,7 +8,7 @@ import base64
 import json
 from Crypto.Cipher import AES
 
-class KeepassCrypt:
+class KeepassCrypt(object):
 
     def __init__(self, key, iv):
         self.key = key

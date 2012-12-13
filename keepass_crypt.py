@@ -13,7 +13,7 @@ class KeepassCrypt(object):
     def __init__(self, key, iv):
         self.key = key
         self.iv = iv
-    
+
     @property
     def aes(self):
         return AES.new(self.key, AES.MODE_CBC, self.iv)
@@ -34,23 +34,3 @@ class KeepassCrypt(object):
         decrypted_word = self.aes.decrypt(word)
         return self.stripPadding(decrypted_word)
 
-#keyfile = json.loads(open('keyfile.txt').read())
-#key = keyfile['Key']
-key = "pda4F1JirKVVVmvQZgNJro8r+LkGQ0MDoogu8BjoSfM="
-key = base64.b64decode(key);
-
-iv = 'jJqvS66N93xq6AHV9O45Jw=='
-iv = base64.b64decode(iv)
-kpc = KeepassCrypt(key, iv)
-
-# 'http://mixi.jp'
-raw_word = 'n+4SXVjeuoBBmsADfqwbOg=='
-print raw_word
-word = base64.b64decode(raw_word)
-
-word = kpc.decrypt(word)
-print word # 'http://mixi.jp'
-
-word = kpc.encrypt(word)
-word = base64.b64encode(word)
-print word # 'ZI56MHFtNDzOD3I+j5losg==' になってしまう。なぜだ！

@@ -10,25 +10,25 @@ from Crypto.Cipher import AES
 
 class KeepassCrypt:
 
-  def __init__(self, key, iv):
-    self.aes = AES.new(key, AES.MODE_CBC, iv)
+    def __init__(self, key, iv):
+        self.aes = AES.new(key, AES.MODE_CBC, iv)
 
-  def addPadding(self, word):
-    block_size = 16
-    padding_number = block_size - (len(word) % block_size)
-    return word + chr(padding_number) * padding_number
+    def addPadding(self, word):
+        block_size = 16
+        padding_number = block_size - (len(word) % block_size)
+        return word + chr(padding_number) * padding_number
 
-  def stripPadding(self, word):
-    return word[:-ord(word[-1])]
+    def stripPadding(self, word):
+        return word[:-ord(word[-1])]
 
-  def encrypt(self, word):
-    word = self.addPadding(word)
-    encrypted_word = self.aes.encrypt(word)
-    return encrypted_word
+    def encrypt(self, word):
+        word = self.addPadding(word)
+        encrypted_word = self.aes.encrypt(word)
+        return encrypted_word
 
-  def decrypt(self, word):
-    decrypted_word = self.aes.decrypt(word)
-    return self.stripPadding(decrypted_word)
+    def decrypt(self, word):
+        decrypted_word = self.aes.decrypt(word)
+        return self.stripPadding(decrypted_word)
 
 #keyfile = json.loads(open('keyfile.txt').read())
 #key = keyfile['Key']

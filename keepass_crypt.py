@@ -2,13 +2,9 @@
 
 # @url http://jp2.php.net/manual/en/ref.mcrypt.php#69782
 
-import sys
-import os.path
-import base64
-import json
 from Crypto.Cipher import AES
 
-class KeepassCrypt(object):
+class KeePassCrypt(object):
 
     def __init__(self, key, iv):
         self.key = key

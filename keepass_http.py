@@ -1,57 +1,97 @@
 # -*- coding: utf-8 -*-
-# @url http://stackoverflow.com/questions/7954661/aes-256-encryption-with-pycrypto-using-cbc-mode-any-weaknesses
-# TODO: AddPadding, Trimが必要
 
+import time
 import getpass
 import os.path
 import sys
 import base64
 import json
-from Crypto.Cipher import AES
 import socket
 from kptool.keepassdb import keepassdb
+import keepass_crypt
 
 if len(sys.argv) != 2 or not os.path.exists(sys.argv[1]):
   print "Usage: keepass_http.py KeePassDBPath"
   sys.exit()
 
-#db_path = "/Users/halt/Dropbox/Private/KeePass/halt.kdb"
 db_path = sys.argv[1]
 print "KeePass DB v1 path:" + db_path
 
 password = getpass.getpass("Enter Password: ")
 
+def test_associate(response):
+    response['Id'] = 'chromeipass'
+    response['Success'] = False
+
+    keyfile = json.loads(open('keyfile.txt').read())
+    key = base64.b64decode(keyfile['Key']);
+    iv  = base64.b64decode(response['Nonce'])
+    verifier = base64.b64decode(response['Verifier'])
+
+    kpc = keepass_crypt.KeePassCrypt(key, iv)
+
+    if base64.b64encode(iv) == kpc.decrypt(verifier):
+        response['Success'] = True
+
+    return response
+
+def get_logins(response):
+    global db_path
+    global password
+
+    response['Id'] = 'chromeipass'
+    response['Success'] = True
+
+    keyfile = json.loads(open('keyfile.txt').read())
+    key = base64.b64decode(keyfile['Key']);
+    iv = base64.b64decode(response['Nonce'])
+
+    kpc = keepass_crypt.KeePassCrypt(key, iv)
+    url = kpc.decrypt(base64.b64decode(response['Url']))
+
+    k = keepassdb.KeepassDBv1(db_path, password)
+    response['Entries'] = []
+    for e in k.find_entries(url):
+        entry = {}
+        entry['Name']     = base64.b64encode(kpc.encrypt(e['title']))
+        entry['Login']    = base64.b64encode(kpc.encrypt(e['username']))
+        entry['Uuid']     = base64.b64encode(kpc.encrypt(e['id']))
+        entry['Password'] = base64.b64encode(kpc.encrypt(e['password']))
+        response['Entries'].append(entry)
+
+    return response
+
 def handle_request(request):
+
+  #print '-- start handle_request ------'
+  #print request
+  #print '-- close handle_request ------'
+
   header, body = request.split('\r\n\r\n')
   response = json.loads(body)
 
-  print '-- start response ------'
-  print response
-
   if response['RequestType'] == 'associate':
     response['Id'] = 'chromeipass'
-    response['Success'] = True
+    response['Success'] = False
 
-    file_handle = open('keyfile.txt', 'w')
-    file_handle.write(body)
-    file_handle.close()
+    key = base64.b64decode(response['Key'])
+    iv  = base64.b64decode(response['Nonce'])
+    verifier = base64.b64decode(response['Verifier'])
+
+    kpc = keepass_crypt.KeePassCrypt(key, iv)
+
+    if base64.b64encode(iv) == kpc.decrypt(verifier):
+      response['Success'] = True
+
+      file_handle = open('keyfile.txt', 'w')
+      file_handle.write(body)
+      file_handle.close()
 
   elif response['RequestType'] == 'test-associate':
-    response['Id'] = 'chromeipass'
-    response['Success'] = True
+      response = test_associate(response)
 
   elif response['RequestType'] == 'get-logins':
-    global db_path
-    global password
-    url = decrypt(response['Url'], response['Nonce'])
-    k = keepassdb.KeepassDBv1(db_path, password)
-    for e in k.find_entries():
-      print e
-      response['Name']     = e['title']
-      response['Login']    = e['username']
-      response['Uuid']     = e['id']
-      response['Password'] = e['password']
-      break;
+      response = get_logins(response)
 
   else:
     print '-- start unknown request type response ------'
@@ -61,72 +101,48 @@ def handle_request(request):
   return http_response
 
 def create_response(body):
-  data = []
-  data.append('HTTP/1.1 200 OK')
-  data.append('Connection: close')
-  data.append('Content-Type: application/json; charset=utf-8')
-  data.append('')
-  data.append(body)
-  data.append('')
+    data = []
+    data.append('HTTP/1.1 200 OK')
+    data.append('Date: ' + time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()))
+    data.append('Server: python-keypass-http')
+    data.append('Connection: close')
+    data.append('Content-Type: application/json; charset=utf-8')
+    data.append('')
+    data.append(body)
+    data.append('')
 
-  response = "\r\n".join(data)
+    response = "\n".join(data)
 
-  print '-- start create_response'
-  print response
+    return response
 
-  return response
+class Server:
+    def __init__(self):
+        self.host = 'localhost'
+        self.port = 19455
 
-class KeepassCrypt:
+    def activate(self):
+        server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_sock.bind((self.host, self.port))
 
-  def __init__(self, iv):
+        while True:
+            #print '-- begin while ------'
+            server_sock.listen(3)
 
-    keyfile = json.loads(open('keyfile.txt').read())
-    key = keyfile['Key']
-    key = base64.b64decode(key);
+            #print 'Waiting for connections...'
+            client_sock, client_address = server_sock.accept()
+            receive_message = client_sock.recv(4096)
 
-    self.aes = AES.new(key, AES.MODE_CBC, iv)
+            if receive_message.rstrip() == "":
+                sys.exit()
 
-  def encrypt(self, word):
-    return self.aes.encrypt(word)
+            response = handle_request(receive_message)
 
-  def decrypt(self, word):
-    decrypted_word = self.aes.decrypt(word)
-    return decrypted_word[0:-2]
+            client_sock.sendall(response)
+            client_sock.close()
 
-raw_iv = 'jJqvS66N93xq6AHV9O45Jw=='
-iv = base64.b64decode(raw_iv)
-kpc = KeepassCrypt(iv)
+        server_sock.close()
 
-raw_word = 'n+4SXVjeuoBBmsADfqwbOg=='
-word = base64.b64decode(raw_word)
-#word = 'http://mixi.jp'
-
-word = kpc.decrypt(word)
-print word
-word = kpc.encrypt(word)
-word = base64.b64encode(word)
-print word
-
-sys.exit()
-
-
-host = 'localhost'
-port = 19455
-
-serversock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-serversock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-serversock.bind((host,port))
-serversock.listen(1)
-print 'Waiting for connections...'
-clientsock, client_address = serversock.accept()
-
-while True:
-  rcvmsg = clientsock.recv(4096)
-  #print 'Received -> %s' % (rcvmsg)
-  print 'Wait...'
-
-  response = handle_request(rcvmsg)
-
-  clientsock.sendall(response)
-clientsock.close()
+server = Server()
+server.activate()
 
